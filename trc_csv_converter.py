@@ -3,71 +3,73 @@
 #----------------------------------------------------------------------------
 # Created By  : Xiao Zhu  
 # Created Date: 1/5/2023
-# version = '0.0.1'
+# Modified by: ChatGPT  
+# Version: '0.0.3'
 # ---------------------------------------------------------------------------
 
 import csv
 import timeit
+import os
+import glob
 
-trc_filename = input("Enter the file name of .trc file (including .trc): ")
-csv_filename = input("Enter the file name of .csv file to be converted (including .csv): ")
-# Construct the header for new CAN trace in .CSV file
+# Get the directory containing the .trc files
+trc_directory = input("Enter the directory path containing .trc files: ")
+
+# Get all .trc files in the directory
+trc_files = glob.glob(os.path.join(trc_directory, '*.trc'))
+
+# Construct the header for the new CAN trace in .CSV file
+header_list = ['Message Number', 'Time Offset(ms)', 'Bus', 'Type', 'ID (hex)', 'Data Length',
+               'Byte0', 'Byte1', 'Byte2', 'Byte3', 'Byte4', 'Byte5', 'Byte6', 'Byte7']
 
 start = timeit.default_timer()
 
-header_list = ['Message Number','Time Offset(ms)','Type','ID (hex)','Data Length',
-               'Byte0','Byte1','Byte2','Byte3','Byte4','Byte5','Byte6','Byte7'] 
+# Function to convert a byte from hex to decimal
+def hex_to_decimal(hex_string):
+    try:
+        # Convert hex to decimal if not empty
+        return str(int(hex_string, 16)) if hex_string else ''
+    except ValueError:
+        return ''  # Handle any invalid hex string cases
 
-# Open the .trc file and create new .csv file
-with open(trc_filename,'r') as f1, open(csv_filename,'w',newline="") as f2:
-    print('Opening .trc file...')
-    lines = f1.readlines()
-    # Write the header to CSV file
-    print('Creating new .csv file...')
-    writer = csv.DictWriter(f2, fieldnames=header_list)
-    writer.writeheader()
-    count = 0
-    print('Converting...')
-    for line in lines:
-        # Filter TRC file headers
-        if list(line)[0]!= ';':
-           line_split = line.split()
-#          if CAN message is less than 8 bytes, fill the gaps with empty strings
-           if len(line_split) == 12:
-                line_split.append('')
-                
-           elif len(line_split) == 11:
-                line_split.extend(['',''])
-                
-           elif len(line_split) == 10:
-                line_split.extend(['','',''])
-                
-           elif len(line_split) == 9:
-                line_split.extend(['','','',''])
+# Loop through each .trc file and convert it to .csv
+for trc_file in trc_files:
+    csv_filename = os.path.splitext(trc_file)[0] + '.csv'  # Create the CSV filename based on the .trc filename
 
-           elif len(line_split) == 8:
-                line_split.extend(['','','','',''])
+    with open(trc_file, 'r') as f1, open(csv_filename, 'w', newline="") as f2:
+        print(f'Converting {trc_file} to {csv_filename}...')
+        lines = f1.readlines()
 
-           elif len(line_split) == 7:
-                line_split.extend(['','','','','',''])          
- 
-           elif len(line_split) == 6:
-                line_split.extend(['','','','','','',''])
-           else:
-                line_split = line_split
-           # Write each row to CSV file
-           writer.writerow({'Message Number':line_split[0],
-                            'Time Offset(ms)':line_split[1],
-                            'Type':line_split[2],
-                            'ID (hex)':line_split[3],
-                            'Data Length':line_split[4],
-                            'Byte0':line_split[5],'Byte1':line_split[6],
-                            'Byte2':line_split[7],'Byte3':line_split[8],
-                            'Byte4':line_split[9],'Byte5':line_split[10],
-                            'Byte6':line_split[11],'Byte7':line_split[12]})
-                            
-    stop = timeit.default_timer()
-         
-    print('File Converion Completed')
-    print('Total Processing Time (Seconds): ', stop - start)
+        # Write the header to the CSV file
+        writer = csv.DictWriter(f2, fieldnames=header_list)
+        writer.writeheader()
 
+        for line in lines:
+            # Filter out TRC file headers
+            if list(line)[0] != ';':
+                line_split = line.split()
+
+                # Pad with empty strings if CAN message is less than 8 bytes
+                while len(line_split) < 15:
+                    line_split.append('')
+
+                # Convert the bytes from hexadecimal to decimal
+                bytes_in_decimal = [hex_to_decimal(byte) for byte in line_split[7:15]]
+
+                # Write each row to the CSV file
+                writer.writerow({
+                    'Message Number': line_split[0],
+                    'Time Offset(ms)': line_split[1],
+                    'Bus': line_split[2],
+                    'Type': line_split[3],
+                    'ID (hex)': line_split[4],
+                    'Data Length': line_split[6],
+                    'Byte0': bytes_in_decimal[0], 'Byte1': bytes_in_decimal[1],
+                    'Byte2': bytes_in_decimal[2], 'Byte3': bytes_in_decimal[3],
+                    'Byte4': bytes_in_decimal[4], 'Byte5': bytes_in_decimal[5],
+                    'Byte6': bytes_in_decimal[6], 'Byte7': bytes_in_decimal[7]
+                })
+
+stop = timeit.default_timer()
+print('All files converted successfully.')
+print('Total Processing Time (Seconds): ', stop - start)
