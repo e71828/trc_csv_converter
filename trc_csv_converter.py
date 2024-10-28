@@ -73,3 +73,56 @@ for trc_file in trc_files:
 stop = timeit.default_timer()
 print('All files converted successfully.')
 print('Total Processing Time (Seconds): ', stop - start)
+
+
+def parse_can_data(can_id, data_bytes):
+    result = {}
+    # 解析 48B 报文
+    if can_id == '48B':
+        # 提取第1和第2字节，计算 CAN_slew_angle，单位是 0.1 度
+        can_slew_angle = int.from_bytes(data_bytes[0:2], byteorder='big', signed=False) * 0.1
+        result['CAN_slew_angle'] = f"{can_slew_angle} deg"
+        
+    # 解析 18D 报文
+    elif can_id == '18D':
+        # 提取第7和第8字节，计算 CAN_slew_speed，单位是 0.1 度/秒
+        can_slew_speed = int.from_bytes(data_bytes[6:8], byteorder='big', signed=False) * 0.1
+        # 提取第5和第6字节，计算 actual_slew_velocity，单位是 0.01 度/秒
+        actual_slew_velocity = int.from_bytes(data_bytes[4:6], byteorder='big', signed=False) * 0.01
+        result['CAN_slew_speed'] = f"{can_slew_speed} deg/s"
+        result['actual_slew_velocity'] = f"{actual_slew_velocity} deg/s"
+    
+    # 解析 184 报文
+    elif can_id == '184':
+        # 假设该报文中包含 Y_slew 和 Desired_Y_slew，范围为 0~1000
+        y_slew_left = int.from_bytes(data_bytes[0:2], byteorder='big', signed=False)
+        desired_y_slew_left = int.from_bytes(data_bytes[2:4], byteorder='big', signed=False)
+        y_slew_right = int.from_bytes(data_bytes[4:6], byteorder='big', signed=False)
+        desired_y_slew_right = int.from_bytes(data_bytes[6:8], byteorder='big', signed=False)
+        result['Y_slew_left'] = y_slew_left
+        result['Desired_Y_slew_left'] = desired_y_slew_left
+        result['Y_slew_right'] = y_slew_right
+        result['Desired_Y_slew_right'] = desired_y_slew_right
+
+    # 解析 18E 报文
+    elif can_id == '18E':
+        # 提取第1和第2字节，计算 can_limiter_allowed_load_temp，单位是 0.1 T
+        can_limiter_allowed_load_temp = int.from_bytes(data_bytes[0:2], byteorder='big', signed=False) * 0.1
+        # 提取第3和第4字节，计算 can_overload_limiter_actual_load_temp，单位是 0.1 T
+        can_overload_limiter_actual_load_temp = int.from_bytes(data_bytes[2:4], byteorder='big', signed=False) * 0.1
+        result['can_limiter_allowed_load_temp'] = f"{can_limiter_allowed_load_temp} T"
+        result['can_overload_limiter_actual_load_temp'] = f"{can_overload_limiter_actual_load_temp} T"
+
+    # 解析 494 报文
+    elif can_id == '494':
+        # 提取第1和第2字节，计算 can_engine_speed，单位是 rpm
+        can_engine_speed = int.from_bytes(data_bytes[0:2], byteorder='big', signed=False)
+        result['can_engine_speed'] = f"{can_engine_speed} rpm"
+
+    # 解析 288 报文
+    elif can_id == '288':
+        # 提取第5到第8字节，计算 can_boom_length，单位是 mm
+        can_boom_length = int.from_bytes(data_bytes[4:8], byteorder='big', signed=False)
+        result['can_boom_length'] = f"{can_boom_length} mm"
+    
+    return result
