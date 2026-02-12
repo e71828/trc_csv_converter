@@ -167,7 +167,7 @@ if __name__ == '__main__':
         if opt in ['-c', '--calib']:
             slew_calib = True
         elif opt in ['-t', '--trc-folder']:
-            trc_directory = arg.strip('"')
+            trc_directory = os.path.normpath(arg.strip('"').strip("'"))
     if not trc_directory:
         print('No valid trc file path provided.')
         sys.exit(1)
